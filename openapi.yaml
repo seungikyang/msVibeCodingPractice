@@ -1,0 +1,519 @@
+openapi: 3.0.1
+info:
+  title: Simple Social Media API
+  description: |
+    A basic social networking service API that allows users to create, read, update, and delete posts,
+    add comments, and like/unlike posts. This API supports web and mobile frontend applications.
+  version: 1.0.0
+  contact:
+    name: Contoso Product Owner / Tech Lead
+servers:
+  - url: http://localhost:8080/api
+    description: Local development server
+tags:
+  - name: Posts
+    description: Operations related to posts management
+  - name: Comments
+    description: Operations related to comments on posts
+  - name: Likes
+    description: Operations related to liking posts
+paths:
+  /posts:
+    get:
+      tags:
+        - Posts
+      summary: Get all posts
+      description: Retrieve a list of all recent posts
+      operationId: listPosts
+      responses:
+        '200':
+          description: Successfully retrieved list of posts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Post'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      tags:
+        - Posts
+      summary: Create a new post
+      description: Create a new post with username and content
+      operationId: createPost
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePostRequest'
+      responses:
+        '201':
+          description: Post created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Post'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /posts/{postId}:
+    get:
+      tags:
+        - Posts
+      summary: Get a single post
+      description: Retrieve details of a specific post by its ID
+      operationId: getPost
+      parameters:
+        - $ref: '#/components/parameters/PostId'
+      responses:
+        '200':
+          description: Successfully retrieved post
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Post'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    patch:
+      tags:
+        - Posts
+      summary: Update a post
+      description: Update the content of an existing post
+      operationId: updatePost
+      parameters:
+        - $ref: '#/components/parameters/PostId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePostRequest'
+      responses:
+        '200':
+          description: Post updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Post'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags:
+        - Posts
+      summary: Delete a post
+      description: Remove a post that is no longer wanted
+      operationId: deletePost
+      parameters:
+        - $ref: '#/components/parameters/PostId'
+      responses:
+        '204':
+          description: Post deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /posts/{postId}/comments:
+    get:
+      tags:
+        - Comments
+      summary: Get all comments for a post
+      description: Retrieve all comments associated with a specific post
+      operationId: listComments
+      parameters:
+        - $ref: '#/components/parameters/PostId'
+      responses:
+        '200':
+          description: Successfully retrieved list of comments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Comment'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      tags:
+        - Comments
+      summary: Create a comment
+      description: Add a new comment to a specific post
+      operationId: createComment
+      parameters:
+        - $ref: '#/components/parameters/PostId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCommentRequest'
+      responses:
+        '201':
+          description: Comment created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /posts/{postId}/comments/{commentId}:
+    get:
+      tags:
+        - Comments
+      summary: Get a specific comment
+      description: Retrieve details of a specific comment
+      operationId: getComment
+      parameters:
+        - $ref: '#/components/parameters/PostId'
+        - $ref: '#/components/parameters/CommentId'
+      responses:
+        '200':
+          description: Successfully retrieved comment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    patch:
+      tags:
+        - Comments
+      summary: Update a comment
+      description: Modify or revise an existing comment
+      operationId: updateComment
+      parameters:
+        - $ref: '#/components/parameters/PostId'
+        - $ref: '#/components/parameters/CommentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCommentRequest'
+      responses:
+        '200':
+          description: Comment updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags:
+        - Comments
+      summary: Delete a comment
+      description: Remove a comment from a post
+      operationId: deleteComment
+      parameters:
+        - $ref: '#/components/parameters/PostId'
+        - $ref: '#/components/parameters/CommentId'
+      responses:
+        '204':
+          description: Comment deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /posts/{postId}/likes:
+    post:
+      tags:
+        - Likes
+      summary: Like a post
+      description: Express appreciation by liking a post
+      operationId: likePost
+      parameters:
+        - $ref: '#/components/parameters/PostId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LikeRequest'
+      responses:
+        '201':
+          description: Post liked successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Like'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags:
+        - Likes
+      summary: Unlike a post
+      description: Remove a like from a post
+      operationId: unlikePost
+      parameters:
+        - $ref: '#/components/parameters/PostId'
+        - name: username
+          in: query
+          description: Username of the user who wants to unlike the post
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Post unliked successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+components:
+  parameters:
+    PostId:
+      name: postId
+      in: path
+      description: Unique identifier of the post
+      required: true
+      schema:
+        type: string
+    CommentId:
+      name: commentId
+      in: path
+      description: Unique identifier of the comment
+      required: true
+      schema:
+        type: string
+  schemas:
+    Post:
+      type: object
+      required:
+        - id
+        - username
+        - content
+        - createdAt
+        - updatedAt
+        - likesCount
+      properties:
+        id:
+          type: string
+          description: Unique identifier of the post
+          example: post-123
+        username:
+          type: string
+          description: Username of the post author
+          example: johndoe
+        content:
+          type: string
+          description: Content of the post
+          example: This is my first post about outdoor activities!
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the post was created
+          example: '2025-05-30T10:30:00Z'
+        updatedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the post was last updated
+          example: '2025-05-30T11:45:00Z'
+        likesCount:
+          type: integer
+          description: Number of likes on the post
+          example: 42
+          minimum: 0
+    CreatePostRequest:
+      type: object
+      required:
+        - username
+        - content
+      properties:
+        username:
+          type: string
+          description: Username of the post author
+          example: johndoe
+          minLength: 1
+        content:
+          type: string
+          description: Content of the post
+          example: This is my first post about outdoor activities!
+          minLength: 1
+    UpdatePostRequest:
+      type: object
+      required:
+        - username
+        - content
+      properties:
+        username:
+          type: string
+          description: Username of the post author (for verification)
+          example: johndoe
+          minLength: 1
+        content:
+          type: string
+          description: Updated content of the post
+          example: This is my updated post about outdoor activities!
+          minLength: 1
+    Comment:
+      type: object
+      required:
+        - id
+        - postId
+        - username
+        - content
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          description: Unique identifier of the comment
+          example: comment-456
+        postId:
+          type: string
+          description: Unique identifier of the post this comment belongs to
+          example: post-123
+        username:
+          type: string
+          description: Username of the comment author
+          example: janedoe
+        content:
+          type: string
+          description: Content of the comment
+          example: Great post! I love outdoor activities too.
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the comment was created
+          example: '2025-05-30T12:00:00Z'
+        updatedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the comment was last updated
+          example: '2025-05-30T12:30:00Z'
+    CreateCommentRequest:
+      type: object
+      required:
+        - username
+        - content
+      properties:
+        username:
+          type: string
+          description: Username of the comment author
+          example: janedoe
+          minLength: 1
+        content:
+          type: string
+          description: Content of the comment
+          example: Great post! I love outdoor activities too.
+          minLength: 1
+    UpdateCommentRequest:
+      type: object
+      required:
+        - username
+        - content
+      properties:
+        username:
+          type: string
+          description: Username of the comment author (for verification)
+          example: janedoe
+          minLength: 1
+        content:
+          type: string
+          description: Updated content of the comment
+          example: Great post! I really love outdoor activities.
+          minLength: 1
+    Like:
+      type: object
+      required:
+        - postId
+        - username
+        - createdAt
+      properties:
+        postId:
+          type: string
+          description: Unique identifier of the liked post
+          example: post-123
+        username:
+          type: string
+          description: Username of the user who liked the post
+          example: bobsmith
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the like was created
+          example: '2025-05-30T13:00:00Z'
+    LikeRequest:
+      type: object
+      required:
+        - username
+      properties:
+        username:
+          type: string
+          description: Username of the user who wants to like the post
+          example: bobsmith
+          minLength: 1
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error code or type
+          example: BadRequest
+        message:
+          type: string
+          description: Human-readable error message
+          example: Missing required field 'username'
+        details:
+          type: string
+          description: Additional details about the error (optional)
+          example: The 'username' field is required but was not provided in the request body
+  responses:
+    BadRequest:
+      description: Bad request - invalid input or missing required fields
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: BadRequest
+            message: Invalid input data
+            details: The 'content' field cannot be empty
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: NotFound
+            message: Resource not found
+            details: Post with id 'post-123' does not exist
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: InternalServerError
+            message: An unexpected error occurred
+            details: Please try again later or contact support
