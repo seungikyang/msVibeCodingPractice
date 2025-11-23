@@ -26,13 +26,15 @@ def list_posts(db: Session = Depends(get_db)):
     result = []
     for post in posts:
         likes_count = db.query(models.Like).filter(models.Like.post_id == post.id).count()
+        comments_count = db.query(models.Comment).filter(models.Comment.post_id == post.id).count()
         post_dict = {
             "id": post.id,
             "username": post.username,
             "content": post.content,
             "createdAt": post.created_at,
             "updatedAt": post.updated_at,
-            "likesCount": likes_count
+            "likesCount": likes_count,
+            "commentsCount": comments_count
         }
         result.append(schemas.Post(**post_dict))
     return result

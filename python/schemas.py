@@ -20,6 +20,7 @@ class Post(BaseModel):
     created_at: datetime = Field(alias="createdAt", description="Timestamp when the post was created", json_schema_extra={"example": "2025-05-30T10:30:00Z"})
     updated_at: datetime = Field(alias="updatedAt", description="Timestamp when the post was last updated", json_schema_extra={"example": "2025-05-30T11:45:00Z"})
     likes_count: int = Field(alias="likesCount", ge=0, description="Number of likes on the post", json_schema_extra={"example": 42})
+    comments_count: int = Field(alias="commentsCount", ge=0, default=0, description="Number of comments on the post", json_schema_extra={"example": 5})
 
     class Config:
         from_attributes = True

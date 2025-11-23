@@ -57,10 +57,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers WITHOUT /api prefix (since it's in servers.url)
-app.include_router(posts.router)
-app.include_router(comments.router)
-app.include_router(likes.router)
+# Include routers WITH /api prefix for frontend compatibility
+app.include_router(posts.router, prefix="/api")
+app.include_router(comments.router, prefix="/api")
+app.include_router(likes.router, prefix="/api")
 
 
 def custom_openapi():
