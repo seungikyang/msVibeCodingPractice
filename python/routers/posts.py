@@ -78,7 +78,8 @@ def create_post(post_data: schemas.CreatePostRequest, db: Session = Depends(get_
         content=new_post.content,
         createdAt=new_post.created_at,
         updatedAt=new_post.updated_at,
-        likesCount=0
+        likesCount=0,
+        commentsCount=0
     )
 
 
@@ -105,13 +106,15 @@ def get_post(postId: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Resource not found")
     
     likes_count = db.query(models.Like).filter(models.Like.post_id == post.id).count()
+    comments_count = db.query(models.Comment).filter(models.Comment.post_id == post.id).count()
     return schemas.Post(
         id=post.id,
         username=post.username,
         content=post.content,
         createdAt=post.created_at,
         updatedAt=post.updated_at,
-        likesCount=likes_count
+        likesCount=likes_count,
+        commentsCount=comments_count
     )
 
 
@@ -151,13 +154,15 @@ def update_post(postId: str, post_data: schemas.UpdatePostRequest, db: Session =
     db.refresh(post)
     
     likes_count = db.query(models.Like).filter(models.Like.post_id == post.id).count()
+    comments_count = db.query(models.Comment).filter(models.Comment.post_id == post.id).count()
     return schemas.Post(
         id=post.id,
         username=post.username,
         content=post.content,
         createdAt=post.created_at,
         updatedAt=post.updated_at,
-        likesCount=likes_count
+        likesCount=likes_count,
+        commentsCount=comments_count
     )
 
 

@@ -15,12 +15,16 @@ async def lifespan(app: FastAPI):
 # Initialize FastAPI with metadata matching openapi.yaml
 app = FastAPI(
     title="Simple Social Media API",
-    description=(
-        "A basic social networking service API that allows users to create, read, update, and delete posts,\n"
-        "add comments, and like/unlike posts. This API supports web and mobile frontend applications.\n"
-    ),
+    description="A basic Social Networking Service (SNS) API that allows users to create, retrieve, update, and delete posts; add comments; and like/unlike posts.",
     version="1.0.0",
-    contact={"name": "Contoso Product Owner / Tech Lead"},
+    contact={
+        "name": "Contoso Product Team",
+        "email": "support@contoso.com"
+    },
+    license_info={
+        "name": "MIT",
+        "url": "https://opensource.org/licenses/MIT"
+    },
     openapi_version="3.0.1",
     openapi_tags=[
         {
@@ -29,11 +33,11 @@ app = FastAPI(
         },
         {
             "name": "Comments",
-            "description": "Operations related to comments on posts"
+            "description": "Operations related to comments management"
         },
         {
             "name": "Likes",
-            "description": "Operations related to liking posts"
+            "description": "Operations related to likes management"
         }
     ],
     servers=[
@@ -84,10 +88,17 @@ def custom_openapi():
         ]
     )
     
-    # Add contact info
+    # Add contact and license info
     if "info" not in openapi_schema:
         openapi_schema["info"] = {}
-    openapi_schema["info"]["contact"] = {"name": "Contoso Product Owner / Tech Lead"}
+    openapi_schema["info"]["contact"] = {
+        "name": "Contoso Product Team",
+        "email": "support@contoso.com"
+    }
+    openapi_schema["info"]["license"] = {
+        "name": "MIT",
+        "url": "https://opensource.org/licenses/MIT"
+    }
     
     # Remove HTTPValidationError and ValidationError schemas
     if "components" in openapi_schema and "schemas" in openapi_schema["components"]:
