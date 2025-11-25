@@ -1,0 +1,342 @@
+@page "/post/{PostId}"
+@using Microsoft.AspNetCore.Components.Web
+@rendermode RenderMode.InteractiveServer
+@using Contoso.BlazorApp.Components.Common
+@using Contoso.BlazorApp.Components.Comment
+@inject Services.ApiService ApiService
+@inject Services.AuthService AuthService
+@inject NavigationManager Navigation
+
+<Layout>
+    @if (isLoading)
+    {
+        <p class="loading">Loading...</p>
+    }
+    else if (post == null || !string.IsNullOrEmpty(error))
+    {
+        <div class="flex flex-col items-center justify-center gap-4" style="height: 50vh;">
+            <p class="error">@(error ?? "Post not found.")</p>
+            <button @onclick="HandleGoBack" class="back-button flex items-center gap-1">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" fill="currentColor" />
+                </svg>
+                Go Back
+            </button>
+        </div>
+    }
+    else
+    {
+        <div class="post-detail-container">
+            <div class="post-detail-header">
+                <button @onclick="HandleGoBack" class="back-button">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" fill="currentColor" />
+                    </svg>
+                    Go Back
+                </button>
+                <h1 class="heading-lg ml-4">Post Detail</h1>
+            </div>
+
+            <div class="post-detail-content">
+                <div class="post-header mb-4">
+                    <div class="avatar"></div>
+                    <div class="username">@post.Username</div>
+                </div>
+
+                <div class="mb-4">
+                    @if (isEditing)
+                    {
+                        <div class="flex flex-col gap-2">
+                            <textarea @bind="editContent"
+                                      @bind:event="oninput"
+                                      disabled="@isSubmitting"
+                                      rows="5"
+                                      class="edit-textarea">
+                            </textarea>
+                            <div class="edit-controls">
+                                <button @onclick="HandleEditSave"
+                                        disabled="@isSubmitting"
+                                        class="btn btn-primary btn-sm">
+                                    Save
+                                </button>
+                                <button @onclick="HandleEditCancel"
+                                        disabled="@isSubmitting"
+                                        class="btn btn-secondary btn-sm">
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-base" style="white-space: pre-wrap; word-break: break-word;">@post.Content</p>
+                    }
+                </div>
+
+                <div class="flex items-center gap-4 mt-2">
+                    <button @onclick="HandleLikeToggle"
+                            class="action-button @(isLiked ? "liked" : "")"
+                            aria-label="Like">
+                        @if (isLiked)
+                        {
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="currentColor" />
+                            </svg>
+                        }
+                        else
+                        {
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="none" stroke="currentColor" stroke-width="2" />
+                            </svg>
+                        }
+                        @if (likesCount > 0)
+                        {
+                            <span class="action-count">@likesCount</span>
+                        }
+                    </button>
+                    <span class="text-sm text-gray-600">Comments @post.CommentsCount</span>
+
+                    @if (isAuthor && !isEditing)
+                    {
+                        <div class="flex gap-2" style="margin-left: auto;">
+                            <button @onclick="HandleEditClick" class="btn btn-primary btn-sm">
+                                Edit
+                            </button>
+                            <button @onclick="HandleDeleteClick" class="btn btn-danger btn-sm">
+                                Delete
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <section class="w-full">
+                <h2 class="heading-md mb-4">Comments</h2>
+                <CommentInput PostId="@PostId" OnCommentAdded="@HandleCommentAdded" />
+
+                @if (comments.Count > 0)
+                {
+                    <div class="flex flex-col gap-2 mt-4">
+                        @foreach (var comment in comments)
+                        {
+                            <CommentItem Comment="@comment"
+                                         PostId="@PostId"
+                                         OnCommentDelete="@HandleCommentDelete"
+                                         OnCommentUpdate="@HandleCommentUpdate" />
+                        }
+                    </div>
+                }
+                else if (!isCommentsLoading)
+                {
+                    <p class="empty-state">No comments yet. Be the first to comment!</p>
+                }
+
+                @if (isCommentsLoading)
+                {
+                    <p class="loading">Loading comments...</p>
+                }
+            </section>
+        </div>
+    }
+</Layout>
+
+@code {
+    [Parameter]
+    public string PostId { get; set; } = string.Empty;
+
+    private Models.Post? post;
+    private List<Models.Comment> comments = new();
+    private bool isLoading = true;
+    private bool isCommentsLoading = true;
+    private string error = string.Empty;
+    private bool isLiked = false;
+    private int likesCount = 0;
+    private bool isEditing = false;
+    private string editContent = string.Empty;
+    private bool isSubmitting = false;
+    private bool isAuthor = false;
+    private bool isInitialized = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await FetchPostDetail();
+        await FetchComments();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !isInitialized)
+        {
+            isInitialized = true;
+            await AuthService.InitializeAsync();
+            var user = await AuthService.GetUserAsync();
+            isAuthor = user != null && post != null && user.Username == post.Username;
+            StateHasChanged();
+        }
+    }
+
+    private async Task FetchPostDetail()
+    {
+        try
+        {
+            isLoading = true;
+            error = string.Empty;
+            post = await ApiService.GetPostAsync(PostId);
+            
+            if (post != null)
+            {
+                isLiked = post.IsLiked;
+                likesCount = post.LikesCount;
+                editContent = post.Content;
+            }
+        }
+        catch (Exception ex)
+        {
+            error = "Error occurred while loading the post.";
+            Console.WriteLine($"Error loading post: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task FetchComments()
+    {
+        try
+        {
+            isCommentsLoading = true;
+            comments = await ApiService.GetCommentsAsync(PostId);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading comments: {ex.Message}");
+        }
+        finally
+        {
+            isCommentsLoading = false;
+        }
+    }
+
+    private async Task HandleLikeToggle()
+    {
+        var user = await AuthService.GetUserAsync();
+        if (user == null) return;
+
+        try
+        {
+            if (isLiked)
+            {
+                await ApiService.UnlikePostAsync(PostId);
+                likesCount = Math.Max(likesCount - 1, 0);
+                isLiked = false;
+            }
+            else
+            {
+                var response = await ApiService.LikePostAsync(PostId, user.Username);
+                if (response != null)
+                {
+                    likesCount = response.LikesCount;
+                    isLiked = true;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error toggling like: {ex.Message}");
+        }
+    }
+
+    private void HandleGoBack()
+    {
+        Navigation.NavigateTo("/");
+    }
+
+    private async Task HandleCommentAdded(Models.Comment newComment)
+    {
+        comments.Insert(0, newComment);
+        if (post != null)
+        {
+            post.CommentsCount++;
+        }
+    }
+
+    private void HandleCommentDelete(string commentId)
+    {
+        comments.RemoveAll(c => c.Id == commentId);
+        if (post != null)
+        {
+            post.CommentsCount = Math.Max(post.CommentsCount - 1, 0);
+        }
+    }
+
+    private void HandleCommentUpdate(Models.Comment updatedComment)
+    {
+        var index = comments.FindIndex(c => c.Id == updatedComment.Id);
+        if (index >= 0)
+        {
+            comments[index] = updatedComment;
+        }
+    }
+
+    private void HandleEditClick()
+    {
+        isEditing = true;
+        editContent = post?.Content ?? string.Empty;
+    }
+
+    private void HandleEditCancel()
+    {
+        isEditing = false;
+        editContent = post?.Content ?? string.Empty;
+    }
+
+    private async Task HandleEditSave()
+    {
+        if (string.IsNullOrWhiteSpace(editContent)) return;
+
+        try
+        {
+            isSubmitting = true;
+            var user = await AuthService.GetUserAsync();
+            if (user == null) return;
+
+            var updatedPost = await ApiService.UpdatePostAsync(PostId, editContent, user.Username);
+            if (updatedPost != null)
+            {
+                post = updatedPost;
+                isEditing = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error updating post: {ex.Message}");
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private void HandleDeleteClick()
+    {
+        // In a real app, show confirmation dialog
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                isSubmitting = true;
+                await ApiService.DeletePostAsync(PostId);
+                await InvokeAsync(() => Navigation.NavigateTo("/"));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error deleting post: {ex.Message}");
+            }
+            finally
+            {
+                isSubmitting = false;
+            }
+        });
+    }
+}

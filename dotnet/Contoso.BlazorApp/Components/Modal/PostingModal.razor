@@ -1,0 +1,108 @@
+@inject Services.AuthService AuthService
+@inject Services.ApiService ApiService
+
+<Modal IsOpen="@IsOpen" OnClose="@HandleCancel">
+    <div class="w-full mb-4">
+        <textarea @bind="content"
+                  @bind:event="oninput"
+                  placeholder="Enter your content."
+                  disabled="@isLoading"
+                  rows="8"
+                  class="form-textarea">
+        </textarea>
+    </div>
+
+    @if (!string.IsNullOrEmpty(error))
+    {
+        <p class="error text-sm">@error</p>
+    }
+
+    <div class="modal-actions">
+        <button @onclick="HandleSubmit"
+                disabled="@(isLoading || string.IsNullOrWhiteSpace(content))"
+                class="btn btn-primary btn-lg">
+            @(isLoading ? "Processing..." : "Submit")
+        </button>
+        <button @onclick="HandleCancel"
+                disabled="@isLoading"
+                class="btn btn-secondary btn-lg">
+            Cancel
+        </button>
+    </div>
+</Modal>
+
+@code {
+    [Parameter]
+    public bool IsOpen { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    [Parameter]
+    public EventCallback<Models.Post> OnPostCreated { get; set; }
+
+    private string content = string.Empty;
+    private bool isLoading = false;
+    private string error = string.Empty;
+
+    private async Task HandleSubmit()
+    {
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            error = "Please enter content.";
+            return;
+        }
+
+        isLoading = true;
+        error = string.Empty;
+
+        try
+        {
+            var user = await AuthService.GetUserAsync();
+            if (user == null)
+            {
+                error = "Please login first.";
+                return;
+            }
+
+            var post = await ApiService.CreatePostAsync(content, user.Username);
+            if (post != null)
+            {
+                content = string.Empty;
+                await OnPostCreated.InvokeAsync(post);
+                await OnClose.InvokeAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            error = "An error occurred while creating the post. Please try again.";
+            Console.WriteLine($"Create post error: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task HandleCancel()
+    {
+        if (!string.IsNullOrWhiteSpace(content))
+        {
+            // In a real app, you'd want to show a confirmation dialog
+            // For now, just close
+        }
+        
+        content = string.Empty;
+        error = string.Empty;
+        await OnClose.InvokeAsync();
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (!IsOpen)
+        {
+            content = string.Empty;
+            error = string.Empty;
+        }
+    }
+}

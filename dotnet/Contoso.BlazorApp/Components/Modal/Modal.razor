@@ -1,0 +1,60 @@
+@implements IDisposable
+@inject IJSRuntime JSRuntime
+
+@if (IsOpen)
+{
+    <div class="modal-backdrop" @onclick="HandleBackdropClick">
+        <div class="modal-content" @onclick:stopPropagation="true">
+            @ChildContent
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool IsOpen { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private IJSObjectReference? _jsModule;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./js/app.js");
+        }
+
+        if (IsOpen && _jsModule != null)
+        {
+            await _jsModule.InvokeVoidAsync("disableBodyScroll");
+        }
+        else if (!IsOpen && _jsModule != null)
+        {
+            await _jsModule.InvokeVoidAsync("enableBodyScroll");
+        }
+    }
+
+    private async Task HandleBackdropClick()
+    {
+        await OnClose.InvokeAsync();
+    }
+
+    [JSInvokable]
+    public async Task OnEscapeKey()
+    {
+        if (IsOpen)
+        {
+            await OnClose.InvokeAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        // Cleanup if needed
+    }
+}

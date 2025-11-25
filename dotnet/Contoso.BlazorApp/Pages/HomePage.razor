@@ -1,0 +1,135 @@
+@page "/"
+@using Microsoft.AspNetCore.Components.Web
+@rendermode RenderMode.InteractiveServer
+@using Contoso.BlazorApp.Components.Common
+@using Contoso.BlazorApp.Components.Post
+@using Contoso.BlazorApp.Components.Modal
+@inject Services.ApiService ApiService
+@inject Services.AuthService AuthService
+
+<Layout>
+    <div class="container">
+        <h1 class="page-title">Contoso Outdoor Social</h1>
+
+        @if (isLoading)
+        {
+            <div class="loading">Loading posts...</div>
+        }
+        else if (!string.IsNullOrEmpty(error))
+        {
+            <div class="error">@error</div>
+        }
+        else if (posts.Count == 0)
+        {
+            <div class="empty-state">No posts yet.</div>
+        }
+        else
+        {
+            <div class="flex flex-col gap-4">
+                @foreach (var post in posts)
+                {
+                    <PostCard Post="@post" />
+                }
+            </div>
+        }
+
+        <FloatingActionButton OnClick="@HandleOpenPostModal" />
+        <PostingModal IsOpen="@isPostModalOpen"
+                      OnClose="@HandleClosePostModal"
+                      OnPostCreated="@HandlePostCreated" />
+        <NameInputModal IsOpen="@isNameModalOpen"
+                        OnClose="@(() => isNameModalOpen = false)" />
+    </div>
+</Layout>
+
+@code {
+    private List<Models.Post> posts = new();
+    private bool isLoading = true;
+    private string error = string.Empty;
+    private bool isPostModalOpen = false;
+    private bool isNameModalOpen = false;
+    private bool isAuthenticated = false;
+    private bool isInitialized = false;
+
+    protected override void OnInitialized()
+    {
+        AuthService.OnAuthStateChanged += HandleAuthStateChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !isInitialized)
+        {
+            isInitialized = true;
+            await AuthService.InitializeAsync();
+            var user = await AuthService.GetUserAsync();
+            isAuthenticated = user != null;
+
+            if (!isAuthenticated)
+            {
+                isNameModalOpen = true;
+            }
+            else
+            {
+                await FetchPosts();
+            }
+
+            StateHasChanged();
+        }
+    }
+
+    private async void HandleAuthStateChanged()
+    {
+        var user = await AuthService.GetUserAsync();
+        isAuthenticated = user != null;
+
+        if (isAuthenticated)
+        {
+            await FetchPosts();
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task FetchPosts()
+    {
+        if (!isAuthenticated) return;
+
+        try
+        {
+            isLoading = true;
+            error = string.Empty;
+            posts = await ApiService.GetPostsAsync();
+        }
+        catch (Exception ex)
+        {
+            error = "An error occurred while loading posts.";
+            Console.WriteLine($"Error fetching posts: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void HandleOpenPostModal()
+    {
+        isPostModalOpen = true;
+    }
+
+    private void HandleClosePostModal()
+    {
+        isPostModalOpen = false;
+    }
+
+    private async Task HandlePostCreated(Models.Post newPost)
+    {
+        await FetchPosts();
+        isPostModalOpen = false;
+    }
+
+    public void Dispose()
+    {
+        AuthService.OnAuthStateChanged -= HandleAuthStateChanged;
+    }
+}

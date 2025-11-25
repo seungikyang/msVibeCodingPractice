@@ -1,0 +1,86 @@
+@inject Services.AuthService AuthService
+
+<Modal IsOpen="@IsOpen" OnClose="@OnClose">
+    <h2 class="modal-title">Please enter your name</h2>
+
+    <div class="w-full mb-4">
+        <input type="text"
+               @bind="username"
+               @bind:event="oninput"
+               @onkeypress="HandleKeyPress"
+               placeholder="Name"
+               disabled="@isLoading"
+               autofocus
+               class="form-input" />
+    </div>
+
+    @if (!string.IsNullOrEmpty(error))
+    {
+        <p class="error text-sm">@error</p>
+    }
+
+    <div class="modal-actions">
+        <button @onclick="HandleSubmit"
+                disabled="@(isLoading || string.IsNullOrWhiteSpace(username))"
+                class="btn btn-primary btn-lg">
+            @(isLoading ? "Processing..." : "Done")
+        </button>
+    </div>
+</Modal>
+
+@code {
+    [Parameter]
+    public bool IsOpen { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    private string username = string.Empty;
+    private bool isLoading = false;
+    private string error = string.Empty;
+
+    private void HandleKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !isLoading && !string.IsNullOrWhiteSpace(username))
+        {
+            _ = HandleSubmit();
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (string.IsNullOrWhiteSpace(username))
+        {
+            error = "Please enter your name.";
+            return;
+        }
+
+        isLoading = true;
+        error = string.Empty;
+
+        try
+        {
+            await AuthService.LoginAsync(username);
+            username = string.Empty;
+            await OnClose.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            error = "An error occurred during login. Please try again.";
+            Console.WriteLine($"Login error: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (!IsOpen)
+        {
+            username = string.Empty;
+            error = string.Empty;
+        }
+    }
+}

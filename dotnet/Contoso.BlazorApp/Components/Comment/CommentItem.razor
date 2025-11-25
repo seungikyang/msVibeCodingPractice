@@ -1,0 +1,122 @@
+@inject Services.AuthService AuthService
+@inject Services.ApiService ApiService
+
+<div class="comment-item">
+    <div class="comment-header">
+        <div class="avatar avatar-md"></div>
+        <div class="username username-sm">@Comment.Username</div>
+    </div>
+
+    @if (isEditing)
+    {
+        <div class="flex flex-col gap-2">
+            <textarea @bind="editContent"
+                      @bind:event="oninput"
+                      class="edit-textarea"
+                      rows="3">
+            </textarea>
+            <div class="edit-controls">
+                <button @onclick="HandleSaveEdit"
+                        class="btn btn-primary btn-sm">
+                    Save
+                </button>
+                <button @onclick="HandleCancelEdit"
+                        class="btn btn-secondary btn-sm">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="comment-content">
+            <p class="comment-text">@Comment.Content</p>
+            @if (isAuthor)
+            {
+                <div class="comment-actions">
+                    <button @onclick="HandleEditClick"
+                            class="btn-link btn-link-sm">
+                        Edit
+                    </button>
+                    <button @onclick="HandleDeleteClick"
+                            class="btn-link btn-link-sm text-gray-500">
+                        Delete
+                    </button>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public Models.Comment Comment { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public string PostId { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<string> OnCommentDelete { get; set; }
+
+    [Parameter]
+    public EventCallback<Models.Comment> OnCommentUpdate { get; set; }
+
+    private bool isEditing = false;
+    private string editContent = string.Empty;
+    private bool isAuthor = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = await AuthService.GetUserAsync();
+        isAuthor = user != null && user.Username == Comment.Username;
+        editContent = Comment.Content;
+    }
+
+    private void HandleEditClick()
+    {
+        isEditing = true;
+        editContent = Comment.Content;
+    }
+
+    private void HandleCancelEdit()
+    {
+        isEditing = false;
+        editContent = Comment.Content;
+    }
+
+    private async Task HandleSaveEdit()
+    {
+        if (string.IsNullOrWhiteSpace(editContent)) return;
+
+        try
+        {
+            var user = await AuthService.GetUserAsync();
+            if (user == null) return;
+
+            var updatedComment = await ApiService.UpdateCommentAsync(PostId, Comment.Id, editContent, user.Username);
+            if (updatedComment != null)
+            {
+                await OnCommentUpdate.InvokeAsync(updatedComment);
+                isEditing = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error updating comment: {ex.Message}");
+        }
+    }
+
+    private async Task HandleDeleteClick()
+    {
+        // In a real app, show a confirmation dialog
+        try
+        {
+            await ApiService.DeleteCommentAsync(PostId, Comment.Id);
+            await OnCommentDelete.InvokeAsync(Comment.Id);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting comment: {ex.Message}");
+        }
+    }
+}

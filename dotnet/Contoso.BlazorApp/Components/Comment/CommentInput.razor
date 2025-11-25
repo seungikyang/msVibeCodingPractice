@@ -1,0 +1,66 @@
+@inject Services.AuthService AuthService
+@inject Services.ApiService ApiService
+
+<div class="comment-input-container">
+    <form class="comment-form" @onsubmit="HandleSubmit" @onsubmit:preventDefault="true">
+        <textarea @bind="content"
+                  @bind:event="oninput"
+                  placeholder="Add a comment"
+                  disabled="@(isLoading || !isAuthenticated)"
+                  rows="3"
+                  class="comment-textarea">
+        </textarea>
+        <button type="submit"
+                disabled="@(string.IsNullOrWhiteSpace(content) || isLoading || !isAuthenticated)"
+                class="btn btn-primary"
+                style="height: 40px;">
+            Post
+        </button>
+    </form>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string PostId { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<Models.Comment> OnCommentAdded { get; set; }
+
+    private string content = string.Empty;
+    private bool isLoading = false;
+    private bool isAuthenticated = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = await AuthService.GetUserAsync();
+        isAuthenticated = user != null;
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (string.IsNullOrWhiteSpace(content)) return;
+
+        isLoading = true;
+
+        try
+        {
+            var user = await AuthService.GetUserAsync();
+            if (user == null) return;
+
+            var comment = await ApiService.CreateCommentAsync(PostId, content, user.Username);
+            if (comment != null)
+            {
+                content = string.Empty;
+                await OnCommentAdded.InvokeAsync(comment);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error creating comment: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

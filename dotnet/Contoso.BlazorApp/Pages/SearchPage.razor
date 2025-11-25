@@ -1,0 +1,134 @@
+@page "/search"
+@using Microsoft.AspNetCore.Components.Web
+@rendermode RenderMode.InteractiveServer
+@using Contoso.BlazorApp.Components.Common
+@using Contoso.BlazorApp.Components.Modal
+@inject Services.ApiService ApiService
+@inject Services.AuthService AuthService
+
+<Layout>
+    <div class="container">
+        <h1 class="page-title flex items-center gap-2">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M15.5 14H14.71L14.43 13.73C15.41 12.59 16 11.11 16 9.5C16 5.91 13.09 3 9.5 3C5.91 3 3 5.91 3 9.5C3 13.09 5.91 16 9.5 16C11.11 16 12.59 15.41 13.73 14.43L14 14.71V15.5L19 20.49L20.49 19L15.5 14ZM9.5 14C7.01 14 5 11.99 5 9.5C5 7.01 7.01 5 9.5 5C11.99 5 14 7.01 14 9.5C14 11.99 11.99 14 9.5 14Z" fill="currentColor" />
+            </svg>
+            Search
+        </h1>
+
+        <form class="search-form" @onsubmit="HandleSearch" @onsubmit:preventDefault="true">
+            <input type="text"
+                   @bind="searchTerm"
+                   @bind:event="oninput"
+                   placeholder="Search users..."
+                   disabled="@isLoading"
+                   class="search-input" />
+            <button type="submit"
+                    disabled="@(isLoading || string.IsNullOrWhiteSpace(searchTerm))"
+                    class="btn btn-primary">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M15.5 14H14.71L14.43 13.73C15.41 12.59 16 11.11 16 9.5C16 5.91 13.09 3 9.5 3C5.91 3 3 5.91 3 9.5C3 13.09 5.91 16 9.5 16C11.11 16 12.59 15.41 13.73 14.43L14 14.71V15.5L19 20.49L20.49 19L15.5 14ZM9.5 14C7.01 14 5 11.99 5 9.5C5 7.01 7.01 5 9.5 5C11.99 5 14 7.01 14 9.5C14 11.99 11.99 14 9.5 14Z" fill="currentColor" />
+                </svg>
+            </button>
+        </form>
+
+        @if (!string.IsNullOrEmpty(error))
+        {
+            <div class="error">@error</div>
+        }
+
+        <div class="flex flex-col gap-4">
+            @if (searchResults.Count > 0)
+            {
+                <div class="text-gray-700">
+                    Search results for '@searchTerm': @searchResults.Count
+                </div>
+                @foreach (var post in searchResults)
+                {
+                    <div class="search-result">
+                        <div class="avatar"></div>
+                        <div>
+                            <div class="font-bold text-gray-900">@post.Username</div>
+                            <div class="text-gray-500 text-sm">@post.Content</div>
+                        </div>
+                    </div>
+                }
+            }
+            else if (!isLoading && !string.IsNullOrWhiteSpace(searchTerm))
+            {
+                <div class="empty-state">No search results found.</div>
+            }
+            else if (string.IsNullOrWhiteSpace(searchTerm) && !isLoading)
+            {
+                <div class="empty-state">Try searching for a user.</div>
+            }
+
+            @if (isLoading)
+            {
+                <div class="loading">Loading...</div>
+            }
+        </div>
+
+        @if (isAuthenticated)
+        {
+            <FloatingActionButton OnClick="@(() => isPostModalOpen = true)" />
+            <PostingModal IsOpen="@isPostModalOpen"
+                          OnClose="@(() => isPostModalOpen = false)"
+                          OnPostCreated="@HandlePostCreated" />
+        }
+    </div>
+</Layout>
+
+@code {
+    private string searchTerm = string.Empty;
+    private List<Models.Post> searchResults = new();
+    private bool isLoading = false;
+    private string error = string.Empty;
+    private bool isPostModalOpen = false;
+    private bool isAuthenticated = false;
+    private bool isInitialized = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !isInitialized)
+        {
+            isInitialized = true;
+            await AuthService.InitializeAsync();
+            var user = await AuthService.GetUserAsync();
+            isAuthenticated = user != null;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleSearch()
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm)) return;
+
+        try
+        {
+            isLoading = true;
+            error = string.Empty;
+            
+            var allPosts = await ApiService.GetPostsAsync();
+            searchResults = allPosts
+                .Where(p => p.Username != null && 
+                           p.Username.Contains(searchTerm.Trim(), StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            error = "An error occurred during search.";
+            Console.WriteLine($"Search error: {ex.Message}");
+            searchResults = new();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private Task HandlePostCreated(Models.Post newPost)
+    {
+        isPostModalOpen = false;
+        return Task.CompletedTask;
+    }
+}

@@ -1,0 +1,144 @@
+@page "/profile"
+@page "/profile/{UserId}"
+@using Microsoft.AspNetCore.Components.Web
+@rendermode RenderMode.InteractiveServer
+@using Contoso.BlazorApp.Components.Common
+@using Contoso.BlazorApp.Components.Post
+@using Contoso.BlazorApp.Components.Modal
+@inject Services.ApiService ApiService
+@inject Services.AuthService AuthService
+@inject NavigationManager Navigation
+
+<Layout>
+    <div class="container">
+        @if (string.IsNullOrEmpty(username))
+        {
+            <div class="flex flex-col items-center justify-center gap-4" style="height: 100vh;">
+                <p class="text-lg text-gray-700">Login is required.</p>
+                <button @onclick="@(() => Navigation.NavigateTo("/"))" class="btn btn-primary">
+                    Go to Home
+                </button>
+            </div>
+        }
+        else if (isLoading)
+        {
+            <div class="loading">Loading profile information...</div>
+        }
+        else
+        {
+            <div class="profile-header">
+                <div class="avatar avatar-lg"></div>
+                <div class="profile-info">
+                    <div class="text-xl font-bold">@username</div>
+                </div>
+            </div>
+
+            @if (isMyProfile)
+            {
+                <button class="btn btn-danger mb-6" @onclick="HandleLogout">
+                    Logout
+                </button>
+            }
+
+            @if (!string.IsNullOrEmpty(error))
+            {
+                <div class="error">@error</div>
+            }
+
+            <div class="flex flex-col gap-4">
+                @if (userPosts.Count > 0)
+                {
+                    @foreach (var post in userPosts)
+                    {
+                        <PostCard Post="@post" />
+                    }
+                }
+                else
+                {
+                    <div class="empty-state">No posts yet.</div>
+                }
+            </div>
+
+            <FloatingActionButton OnClick="@(() => isPostModalOpen = true)" />
+            <PostingModal IsOpen="@isPostModalOpen"
+                          OnClose="@(() => isPostModalOpen = false)"
+                          OnPostCreated="@HandlePostCreated" />
+        }
+    </div>
+</Layout>
+
+@code {
+    [Parameter]
+    public string? UserId { get; set; }
+
+    private string? username;
+    private bool isMyProfile = false;
+    private List<Models.Post> userPosts = new();
+    private bool isLoading = true;
+    private string error = string.Empty;
+    private bool isPostModalOpen = false;
+    private bool isInitialized = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !isInitialized)
+        {
+            isInitialized = true;
+            await AuthService.InitializeAsync();
+            var user = await AuthService.GetUserAsync();
+            username = UserId ?? user?.Username;
+            isMyProfile = user != null && username == user.Username;
+
+            if (!string.IsNullOrEmpty(username))
+            {
+                await FetchPosts();
+            }
+            else
+            {
+                isLoading = false;
+            }
+            
+            StateHasChanged();
+        }
+    }
+
+    private async Task FetchPosts()
+    {
+        try
+        {
+            isLoading = true;
+            error = string.Empty;
+            
+            var allPosts = await ApiService.GetPostsAsync();
+            userPosts = allPosts
+                .Where(p => p.Username == username)
+                .OrderByDescending(p => p.CreatedAt)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            error = "Failed to load profile information.";
+            Console.WriteLine($"Error fetching posts: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void HandleLogout()
+    {
+        // In a real app, show confirmation dialog
+        _ = Task.Run(async () =>
+        {
+            await AuthService.LogoutAsync();
+            await InvokeAsync(() => Navigation.NavigateTo("/"));
+        });
+    }
+
+    private void HandlePostCreated(Models.Post newPost)
+    {
+        userPosts.Insert(0, newPost);
+        isPostModalOpen = false;
+    }
+}

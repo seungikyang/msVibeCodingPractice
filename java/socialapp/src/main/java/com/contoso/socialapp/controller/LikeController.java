@@ -42,7 +42,7 @@ public class LikeController {
         return ResponseEntity.status(HttpStatus.CREATED).body(likeService.likePost(postId, request));
     }
     
-    @DeleteMapping
+    @DeleteMapping("/{username}")
     @Operation(
         summary = "Unlike a post",
         description = "Remove your like from a post if you change your mind",
@@ -55,9 +55,10 @@ public class LikeController {
     })
     public ResponseEntity<Void> unlikePost(
             @Parameter(description = "Unique identifier of the post", required = true)
-            @PathVariable String postId) {
-        // Note: In a real application, username would come from authentication context
-        // For this demo, we'll need to modify the approach
+            @PathVariable String postId,
+            @Parameter(description = "Username of the user who liked the post", required = true)
+            @PathVariable String username) {
+        likeService.unlikePost(postId, username);
         return ResponseEntity.noContent().build();
     }
 }

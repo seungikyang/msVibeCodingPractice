@@ -1,0 +1,19 @@
+@inject NavigationManager Navigation
+
+<nav class="navbar">
+    <NavItem Href="/" IconType="HomeIcon" IsActive="@IsActive("/")" />
+    <NavItem Href="/search" IconType="SearchIcon" IsActive="@IsActive("/search")" />
+    <NavItem Href="/profile" IconType="PersonIcon" IsActive="@IsActive("/profile")" />
+</nav>
+
+@code {
+    private bool IsActive(string href)
+    {
+        var currentPath = new Uri(Navigation.Uri).PathAndQuery;
+        if (href == "/")
+        {
+            return currentPath == "/";
+        }
+        return currentPath.StartsWith(href);
+    }
+}

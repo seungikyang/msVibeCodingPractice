@@ -1,0 +1,11 @@
+<div class="layout-container">
+    <NavBar />
+    <main class="main-content">
+        @ChildContent
+    </main>
+</div>
+
+@code {
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}
