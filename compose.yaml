@@ -1,0 +1,46 @@
+services:
+  contoso-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.java
+    container_name: contoso-backend
+    ports:
+      - "8080:8080"
+    networks:
+      - contoso
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/posts"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  contoso-frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dotnet
+    container_name: contoso-frontend
+    ports:
+      - "3030:8080"
+    environment:
+      - ApiSettings__BaseUrl=http://contoso-backend:8080/api
+      - ASPNETCORE_URLS=http://+:8080
+      - ASPNETCORE_ENVIRONMENT=Production
+    networks:
+      - contoso
+    depends_on:
+      contoso-backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+networks:
+  contoso:
+    driver: bridge
+    name: contoso
